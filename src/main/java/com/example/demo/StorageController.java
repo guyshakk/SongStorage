@@ -3,7 +3,6 @@ package com.example.demo;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.PostConstruct;
 
@@ -21,20 +20,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class StorageController {
 	private Map<String, Object> storage;
-	private AtomicLong idGenerator;
 
 	@PostConstruct
 	public void init() {
-		this.idGenerator = new AtomicLong(1);
 		storage = new HashMap<String, Object>();
 	}
 
-	@RequestMapping(path = "/storage", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ObjectWithKey store(@RequestBody Object object) {
-		String newKey = "" + this.idGenerator.getAndIncrement();
-		ObjectWithKey rv = new ObjectWithKey(newKey, object);
-		storage.put(newKey, object);
-		return rv;
+	@RequestMapping(path = "/storage/{id}", method = RequestMethod.POST, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Object store(@PathVariable("id") String id, @RequestBody Object object) {
+		if (this.storage.containsKey(id)) {
+			throw new RuntimeException("This id is used");
+		}
+		storage.put(id, object);
+		return object;
 	}
 
 	@RequestMapping(path = "/storage/{id}", method = RequestMethod.PUT, consumes = MediaType.APPLICATION_JSON_VALUE)
