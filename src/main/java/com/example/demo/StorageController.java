@@ -1,9 +1,10 @@
 package com.example.demo;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -48,7 +49,10 @@ public class StorageController {
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	public void update(@PathVariable("id") String id, 
 			@RequestBody Map<String, Object> object) {
-		storage.put(id, object);
+		if (this.storage.containsKey(id))
+			storage.put(id, object);
+		else
+			throw new RuntimeException("Cannot update, id doesn't exist in storage");
 	}
 
 	@RequestMapping(path = "/storage/{id}",
@@ -58,7 +62,7 @@ public class StorageController {
 		if (storage.get(id) != null)
 			return storage.get(id);
 		else
-			throw new DataNotFoundException("could not find item by key: " + id);
+			throw new DataNotFoundException("Could not find item by key: " + id);
 	}
 
 	@RequestMapping(path = "/storage",
@@ -68,101 +72,106 @@ public class StorageController {
 	}
 	
 	/**Retrieves all elements existing in storage**/
-	@RequestMapping(path = "/storage/all",
+	@RequestMapping(path = "/storage/all/{sortBy}/{sortOrder}/{page}/{size}",
 			method = RequestMethod.GET,
 			produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, Object>[] getAllElements () {
+	public Map<String, Object>[] getAllElements (@PathVariable("sortBy") String sortBy,
+			@PathVariable("sortOrder") String sortOrder,
+			@PathVariable("page") int page,
+			@PathVariable("size") int size) {
+		
 		return this.storage
 				.values()
 				.stream()
+				.sorted(getComparator(sortBy, sortOrder))
+				.skip(page*size)
+				.limit(size)
 				.collect(Collectors.toList())
 				.toArray((Map<String, Object>[]) new Map[0]);
 	}
 	
 	
 	/**Retrieves all elements existing in storage having the ${name} value in the name field**/
-	@RequestMapping(path = "/storage/byname/{name}",
+	@RequestMapping(path = "/storage/byname/{name}/{sortBy}/{sortOrder}/{page}/{size}",
 			method = RequestMethod.GET, 
 			produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, Object>[] getAllSongsByName (@PathVariable("name") String name) {
+	public Map<String, Object>[] getAllSongsByName (@PathVariable("name") String name,
+			@PathVariable("sortBy") String sortBy,
+			@PathVariable("sortOrder") String sortOrder,
+			@PathVariable("page") int page,
+			@PathVariable("size") int size) {
 		
-		Map<String, Map<String, Object>> st = new TreeMap<String, Map<String,Object>>();
-		for (Entry<String, Map<String, Object>> obj : storage.entrySet()) {
-			if (!obj.getValue().containsKey(StorageKeys.NAME.toString().toLowerCase()))
-				throw new MissingKeyException(StorageKeys.NAME.toString().toLowerCase());
-			if (obj
-					.getValue()
-					.get(StorageKeys.NAME.toString().toLowerCase())
-					.toString()
-					.toLowerCase()
-					.equals(name.toLowerCase())) {
-				
-				st.put(obj.getKey(), obj.getValue());
-			}
-		}
-			return
-					st
-					.values()
-					.stream()
-					.collect(Collectors.toList())
-					.toArray((Map<String, Object>[]) new Map[0]);
+		return this.storage
+				.values()
+				.stream()
+				.filter(m->m.containsKey(StorageKeys.NAME.toString().toLowerCase()))
+				.filter(m->(m.get(StorageKeys.NAME.toString().toLowerCase()).toString().toLowerCase().equals(name.toLowerCase())))
+				.sorted(getComparator(sortBy, sortOrder))
+				.skip(page*size)
+				.limit(size).collect(Collectors.toList())
+				.toArray((Map<String, Object>[]) new Map[0]);
 	}
 	
 	/**Retrieves all elements existing in storage having the ${performer} value in the performer field**/
-	@RequestMapping(path = "/storage/byperformer/{performer}",
+	@RequestMapping(path = "/storage/byperformer/{performer}/{sortBy}/{sortOrder}/{page}/{size}",
 			method = RequestMethod.GET, 
 			produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, Object>[] getAllSongsByPerfomer (@PathVariable("performer") String performer) {  
+	public Map<String, Object>[] getAllSongsByPerfomer (@PathVariable("performer") String performer,
+			@PathVariable("sortBy") String sortBy,
+			@PathVariable("sortOrder") String sortOrder,
+			@PathVariable("page") int page,
+			@PathVariable("size") int size) {
 		
-		Map<String, Map<String, Object>> st = new TreeMap<String, Map<String,Object>>();
-		for (Entry<String, Map<String, Object>> obj : storage.entrySet()) {
-			if (!obj.getValue().containsKey(StorageKeys.PERFORMER.toString().toLowerCase()))
-				throw new MissingKeyException(StorageKeys.PERFORMER.toString().toLowerCase());
-			if (obj
-					.getValue()
-					.get(StorageKeys.PERFORMER.toString().toLowerCase())
-					.toString()
-					.toLowerCase()
-					.equals(performer.toLowerCase())) {
-				
-				st.put(obj.getKey(), obj.getValue());
-			}
-		}
-			return
-					st
-					.values()
-					.stream()
-					.collect(Collectors.toList())
-					.toArray((Map<String, Object>[]) new Map[0]);
+		return this.storage
+				.values()
+				.stream().filter(m->m.containsKey(StorageKeys.PERFORMER.toString().toLowerCase()))
+				.filter(m->(m.get(StorageKeys.PERFORMER.toString().toLowerCase())).toString().toLowerCase().contains(performer.toLowerCase()))
+				.sorted(getComparator(sortBy,sortOrder))
+				.skip(page*size)
+				.limit(size).collect(Collectors.toList())
+				.toArray((Map<String, Object>[]) new Map[0]);
 	}
 	
 	
 	/**Retrieves all elements existing in storage having the ${genre} value in the genres field**/
-	@RequestMapping(path = "/storage/bygenre/{genre}",
+	@RequestMapping(path = "/storage/bygenre/{genre}/{sortBy}/{sortOrder}/{page}/{size}",
 			method = RequestMethod.GET, 
 			produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, Object>[] getAllSongsByGenre (@PathVariable("genre") String genre) {
+	public Map<String, Object>[] getAllSongsByGenre (@PathVariable("genre") String genre,
+			@PathVariable("sortBy") String sortBy,
+			@PathVariable("sortOrder") String sortOrder,
+			@PathVariable("page") int page,
+			@PathVariable("size") int size) {
 		
-		Map<String, Map<String, Object>> st = new TreeMap<String, Map<String,Object>>();
-		for (Entry<String, Map<String, Object>> obj : storage.entrySet()) {
-			if (!obj.getValue().containsKey(StorageKeys.GENRES.toString().toLowerCase()))
-				throw new MissingKeyException(StorageKeys.GENRES.toString().toLowerCase());
-			List<String> genres = (List<String>)obj.getValue()
-					.get(StorageKeys.GENRES.toString().toLowerCase());
-			genres = genres
-					.stream()
-					.map(o -> o.toLowerCase())
-					.collect(Collectors.toList());
-			if (genres.contains(genre.toLowerCase())) {
-				st.put(obj.getKey(), obj.getValue());
-			}
+		return this.storage
+				.values()
+				.stream()
+				.filter(m->m.containsKey(StorageKeys.GENRES.toString().toLowerCase()))
+				.filter(m->((ArrayList<String>)m.get(StorageKeys.GENRES.toString().toLowerCase())).contains(genre))
+				.sorted(getComparator(sortBy, sortOrder))
+				.skip(page*size)
+				.limit(size).collect(Collectors.toList())
+				.toArray((Map<String, Object>[]) new Map[0]);
+	}
+	
+	/**Get the correct comparator for Song comparison by sortBy and sortOrder attributes**/
+	private Comparator<Map<String, Object>> getComparator(String sortBy, String sortOrder) {
+		
+		//Check whether sortOrder value is asc or desc
+		if (!Arrays.asList
+				(SortOrder.values())
+				.stream()
+				.map(obj -> obj.toString().toLowerCase())
+				.collect(Collectors.toList())
+				.contains
+				(sortOrder.toLowerCase())) {
+			
+			throw new UnsupportedSortOrderException(sortOrder);
 		}
-			return
-					st
-					.values()
-					.stream()
-					.collect(Collectors.toList())
-					.toArray((Map<String, Object>[]) new Map[0]);
+		return sortOrder.toLowerCase().
+				equals(SortOrder.ASC.toString().toLowerCase()) ? 
+						new CmpGeneral(sortBy) : 
+							new CmpGeneral(sortBy).reversed();
 	}
 
 
